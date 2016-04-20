@@ -1,0 +1,72 @@
+<?php
+/**
+ * @file
+ * Main hook implementations.
+ */
+
+/**
+ * Implements hook_menu_alter().
+ */
+function islandora_temp_patch_menu_alter(&$items) {
+  $items['islandora/object/%islandora_object/download_clip']['page callback'] = 'disable_dl_secure_dl';
+}
+
+/**
+ * Only allow downloading of djatoka URIs.
+ *
+ * @param AbstractObject $object
+ *   The object to download.
+ */
+function islandora_temp_patch_secure_dl(AbstractObject $object) {
+  if (isset($_GET['clip'])) {
+    $url = $_GET['clip'];
+
+    $seadragon_settings = variable_get('islandora_openseadragon_settings', array());
+    if (!isset($seadragon_settings['djatokaServerBaseURL'])) {
+      drupal_access_denied();
+      drupal_exit();
+    }
+    if (!preg_match('/^https?:\/\//', $url) || drupal_substr($url, 0, drupal_strlen($seadragon_settings['djatokaServerBaseURL'])) !== $seadragon_settings['djatokaServerBaseURL']) {
+      drupal_access_denied();
+      drupal_exit();
+    }
+
+    $filename = $object->label;
+    header("Content-Disposition: attachment; filename=\"{$filename}.jpg\"");
+    header("Content-type: image/jpeg");
+    header("Content-Transfer-Encoding: binary");
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_HEADER, 0);
+    curl_setopt($ch, CURLOPT_URL, $url);
+    $response = curl_exec($ch);
+    curl_close($ch);
+  }
+  drupal_exit();
+}
+
+/**
+ * Implements hook_preprocess_theme().
+ *
+ * Overrides the islandora_openseadragon_preprocess_islandora_object_print().
+ * Closes proxy hole.
+ */
+function islandora_temp_patch_preprocess_islandora_object_print(array &$variables) {
+  if ((isset($variables['clip'])||isset($_GET['clip'])) && module_exists('islandora_openseadragon')) {
+    if (isset($_GET['clip'])) {
+      $url = $_GET['clip'];
+    }
+    else {
+      $url = $variables['clip'];
+    }
+    $seadragon_settings = variable_get('islandora_openseadragon_settings', array());
+    if (!isset($seadragon_settings['djatokaServerBaseURL'])) {
+      drupal_access_denied();
+      drupal_exit();
+    }
+    if (!preg_match('/^https?:\/\//', $url) || drupal_substr($url, 0, drupal_strlen($seadragon_settings['djatokaServerBaseURL'])) !== $seadragon_settings['djatokaServerBaseURL']) {
+      drupal_access_denied();
+      drupal_exit();
+    }
+  }
+}

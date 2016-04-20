@@ -1,0 +1,7 @@
+name = Patch Clip Holes
+description = "Patches the download clip route as it is an open proxy."
+dependencies[] = islandora
+package = Islandora Patches
+version = 7.x-dev
+core = 7.x
+php = 5.3
